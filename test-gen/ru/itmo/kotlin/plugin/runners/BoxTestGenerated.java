@@ -27,4 +27,10 @@ public class BoxTestGenerated extends AbstractBoxTest {
     public void testSimple() throws Exception {
         runTest("testData/box/simple.kt");
     }
+
+    @Test
+    @TestMetadata("throws.kt")
+    public void testThrows() throws Exception {
+        runTest("testData/box/throws.kt");
+    }
 }

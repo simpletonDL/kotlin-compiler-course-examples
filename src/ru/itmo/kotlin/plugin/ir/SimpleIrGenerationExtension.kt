@@ -7,7 +7,9 @@ import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 
 class SimpleIrGenerationExtension: IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
-        val transformers = listOf(SimpleIrBodyGenerator(pluginContext))
+        val transformers = listOf<SimpleIrBodyGenerator>(
+//            SimpleIrBodyGenerator(pluginContext)
+        )
         for (transformer in transformers) {
             moduleFragment.acceptChildrenVoid(transformer)
         }

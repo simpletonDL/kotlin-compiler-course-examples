@@ -1,7 +1,9 @@
+// FULL_JDK
 import org.itmo.my.pretty.plugin.Throws
+import java.lang.Exception
 
 fun g(y: Int): String {
-    return y.toString()
+    throw Exception()
 }
 
 @Throws

@@ -1,10 +1,12 @@
+// FULL_JDK
 import org.itmo.my.pretty.plugin.Throws
+import java.lang.Exception
 
 @Throws
 fun f(): String {
-    return "OK"
+    throw Exception()
 }
 
 fun box(): String {
-    return fOrNull() ?: "Fail"
+    return fOrNull() ?: "OK"
 }

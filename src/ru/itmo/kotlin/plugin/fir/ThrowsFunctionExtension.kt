@@ -14,7 +14,10 @@ import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
 import org.jetbrains.kotlin.fir.extensions.predicate.has
 import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
+import org.jetbrains.kotlin.fir.references.builder.buildExplicitThisReference
+import org.jetbrains.kotlin.fir.references.builder.buildImplicitThisReference
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
+import org.jetbrains.kotlin.fir.resolve.defaultType
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -23,6 +26,7 @@ import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.withNullability
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
 import ru.itmo.kotlin.plugin.utils.fqn
@@ -33,7 +37,9 @@ class ThrowsFunctionExtension(session: FirSession): FirDeclarationGenerationExte
         private val THROWS_ANNOTATION_PREDICATE = has("org.itmo.my.pretty.plugin.Throws".fqn())
     }
 
-    object ThrowsFunctionKey : FirPluginKey()
+    object ThrowsFunctionKey : FirPluginKey() {
+        override fun toString(): String = "ThrowsFunctionKey"
+    }
 
     private val predicateBaseProvider = session.predicateBasedProvider
 
@@ -42,20 +48,41 @@ class ThrowsFunctionExtension(session: FirSession): FirDeclarationGenerationExte
             .filterIsInstance<FirNamedFunctionSymbol>()
     }
 
-    private val generatedCallableIds: Map<CallableId, FirNamedFunctionSymbol> by lazy {
+    private val baseFunSymbolsTotal: Map<CallableId, FirNamedFunctionSymbol> by lazy {
         matchedFunction.associateBy { symbol ->
             val genName = Name.identifier(symbol.callableId.callableName.asString() + GENERATED_SUFFIX)
             symbol.callableId.copy(callableName = genName)
         }
     }
 
+    private val baseFunSymbolsTopLevel: Map<CallableId, FirNamedFunctionSymbol> by lazy {
+        baseFunSymbolsTotal.filter { (_, symbol) ->
+            symbol.callableId.className == null
+        }
+    }
+
+    private val baseFunSymbolsClassLevel: Map<CallableId, FirNamedFunctionSymbol> by lazy {
+        baseFunSymbolsTotal.filter { (_, symbol) ->
+            symbol.callableId.classId != null
+        }
+    }
+
+    private val callableNamesForClass: Map<ClassId, MutableSet<Name>> by lazy {
+        return@lazy buildMap {
+            for (genId in baseFunSymbolsClassLevel.keys) {
+                val interestedSet = getOrPut(genId.classId!!) { mutableSetOf() }
+                interestedSet.add(genId.callableName)
+            }
+        }
+    }
+
     @OptIn(SymbolInternals::class)
     override fun generateFunctions(callableId: CallableId, owner: FirClassSymbol<*>?): List<FirNamedFunctionSymbol> {
-        if (callableId !in generatedCallableIds) {
+        if (callableId !in baseFunSymbolsTotal) {
             return emptyList()
         }
 
-        val baseFunSymbol = generatedCallableIds[callableId]!!
+        val baseFunSymbol = baseFunSymbolsTotal[callableId]!!
         val returnFunTarget = FirFunctionTarget(callableId.callableName.asString(), false)
 
 
@@ -72,6 +99,17 @@ class ThrowsFunctionExtension(session: FirSession): FirDeclarationGenerationExte
                         calleeReference = buildResolvedNamedReference {
                             name = baseFunSymbol.name
                             resolvedSymbol = baseFunSymbol
+                        }
+
+                        if (owner != null) {
+                            dispatchReceiver = buildThisReceiverExpression {
+                                typeRef = buildResolvedTypeRef {
+                                    type = owner.defaultType()
+                                }
+                                calleeReference = buildImplicitThisReference {
+                                    boundSymbol = owner
+                                }
+                            }
                         }
 
                         val argumentMap = baseFunSymbol.fir.valueParameters.associateBy { param ->
@@ -172,7 +210,11 @@ class ThrowsFunctionExtension(session: FirSession): FirDeclarationGenerationExte
     }
 
     override fun getTopLevelCallableIds(): Set<CallableId> {
-        return generatedCallableIds.keys
+        return baseFunSymbolsTopLevel.keys
+    }
+
+    override fun getCallableNamesForClass(classSymbol: FirClassSymbol<*>): Set<Name> {
+        return callableNamesForClass[classSymbol.classId] ?: setOf()
     }
 
     override fun FirDeclarationPredicateRegistrar.registerPredicates() {

@@ -2,15 +2,11 @@ package ru.itmo.kotlin.plugin.fir
 
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.declarations.FirPluginKey
-import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirBlock
-import org.jetbrains.kotlin.fir.expressions.FirExpression
-import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.*
 import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
 import org.jetbrains.kotlin.fir.extensions.predicate.has
-import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
@@ -19,16 +15,15 @@ import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.withNullability
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
-import ru.itmo.kotlin.plugin.utils.fqn
 
-class ThrowsFunctionExtension(session: FirSession): FunctionTransformationExtension(session) {
+class GenerateOrNullFunctionExtension(session: FirSession): FunctionGenerationExtension(session) {
     companion object {
         private const val GENERATED_SUFFIX = "OrNull"
     }
 
     object ThrowsFunctionKey : FirPluginKey()
 
-    override val declPredicate: DeclarationPredicate = has("org.itmo.my.pretty.plugin.Throws".fqn())
+    override val declPredicate: DeclarationPredicate = has("org.itmo.my.pretty.plugin.GenerateOrNull".fqn())
 
     override fun generateNewFunctionName(oldName: String) =
         oldName + GENERATED_SUFFIX
@@ -40,32 +35,7 @@ class ThrowsFunctionExtension(session: FirSession): FunctionTransformationExtens
             statements.add(
                 buildReturnExpression {
                     target = returnFunTarget
-
-                    result = buildFunctionCall {
-                        typeRef = buildResolvedTypeRef {
-                            type = baseFunSymbol.resolvedReturnType
-                        }
-                        calleeReference = buildResolvedNamedReference {
-                            name = baseFunSymbol.name
-                            resolvedSymbol = baseFunSymbol
-                        }
-
-                        val argumentMap = baseFunSymbol.fir.valueParameters.associateBy { param ->
-                            buildPropertyAccessExpression {
-                                typeRef = param.returnTypeRef
-                                calleeReference = buildResolvedNamedReference {
-                                    name = param.name
-                                    resolvedSymbol = param.symbol
-                                }
-                            }
-                        }.let {
-                            val result = linkedMapOf<FirExpression, FirValueParameter>()
-                            result.putAll(it)
-                            result
-                        }
-
-                        argumentList = buildResolvedArgumentList(argumentMap)
-                    }
+                    result = buildFunctionCallWithSameArguments(baseFunSymbol)
                 }
             )
         }

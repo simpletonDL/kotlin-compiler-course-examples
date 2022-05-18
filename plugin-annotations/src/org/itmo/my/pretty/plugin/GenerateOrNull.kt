@@ -1,3 +1,3 @@
 package org.itmo.my.pretty.plugin
 
-annotation class Throws
+annotation class GenerateOrNull

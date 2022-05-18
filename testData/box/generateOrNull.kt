@@ -1,8 +1,8 @@
 // FULL_JDK
-import org.itmo.my.pretty.plugin.Throws
+import org.itmo.my.pretty.plugin.GenerateOrNull
 import java.lang.Exception
 
-@Throws
+@GenerateOrNull
 fun f(): String {
     throw Exception()
 }

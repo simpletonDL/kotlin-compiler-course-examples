@@ -1,0 +1,11 @@
+FILE: generateOrThrow.kt
+    @R|org/itmo/my/pretty/plugin/GenerateOrThrow|() public final fun g(): R|kotlin/String?| {
+        ^g String(OK)
+    }
+    public final fun box(): R|kotlin/String| {
+        ^box R|/gOrThrow|()
+    }
+FILE: __GENERATED DECLARATIONS__.kt
+    public final fun gOrThrow(): R|kotlin/String| {
+        ^gOrThrow R|/g|() ?: throw R|java/lang/IllegalStateException.IllegalStateException|()
+    }

@@ -1,12 +1,12 @@
 // FULL_JDK
-import org.itmo.my.pretty.plugin.Throws
+import org.itmo.my.pretty.plugin.GenerateOrNull
 import java.lang.Exception
 
 fun g(y: Int): String {
     throw Exception()
 }
 
-@Throws
+@GenerateOrNull
 fun id(x: Int): String {
     return g(x)
 }

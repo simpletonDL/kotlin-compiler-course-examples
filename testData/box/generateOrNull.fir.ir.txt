@@ -1,0 +1,22 @@
+FILE fqName:<root> fileName:/generateOrNull.kt
+  FUN name:f visibility:public modality:FINAL <> () returnType:kotlin.String
+    annotations:
+      GenerateOrNull
+    BLOCK_BODY
+      THROW type=kotlin.Nothing
+        CONSTRUCTOR_CALL 'public constructor <init> () declared in java.lang.Exception' type=java.lang.Exception origin=null
+  FUN name:box visibility:public modality:FINAL <> () returnType:kotlin.String
+    BLOCK_BODY
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in <root>'
+        BLOCK type=kotlin.String origin=ELVIS
+          VAR IR_TEMPORARY_VARIABLE name:tmp_0 type:kotlin.String? [val]
+            CALL 'public final fun fOrNull (): kotlin.String? declared in <root>' type=kotlin.String? origin=null
+          WHEN type=kotlin.String origin=ELVIS
+            BRANCH
+              if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+                arg0: GET_VAR 'val tmp_0: kotlin.String? [val] declared in <root>.box' type=kotlin.String? origin=null
+                arg1: CONST Null type=kotlin.Nothing? value=null
+              then: CONST String type=kotlin.String value="OK"
+            BRANCH
+              if: CONST Boolean type=kotlin.Boolean value=true
+              then: GET_VAR 'val tmp_0: kotlin.String? [val] declared in <root>.box' type=kotlin.String? origin=null

@@ -2,65 +2,41 @@ package ru.itmo.kotlin.plugin.fir
 
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.declarations.FirPluginKey
-import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
-import org.jetbrains.kotlin.fir.declarations.builder.buildSimpleFunction
 import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameter
-import org.jetbrains.kotlin.fir.declarations.builder.buildValueParameterCopy
+import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.buildResolvedArgumentList
 import org.jetbrains.kotlin.fir.expressions.builder.*
-import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
-import org.jetbrains.kotlin.fir.extensions.FirDeclarationPredicateRegistrar
+import org.jetbrains.kotlin.fir.extensions.predicate.DeclarationPredicate
 import org.jetbrains.kotlin.fir.extensions.predicate.has
-import org.jetbrains.kotlin.fir.extensions.predicateBasedProvider
 import org.jetbrains.kotlin.fir.references.builder.buildResolvedNamedReference
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
-import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.types.builder.buildResolvedTypeRef
 import org.jetbrains.kotlin.fir.types.withNullability
-import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
 import ru.itmo.kotlin.plugin.utils.fqn
 
-class ThrowsFunctionExtension(session: FirSession): FirDeclarationGenerationExtension(session) {
+class ThrowsFunctionExtension(session: FirSession): FunctionTransformationExtension(session) {
     companion object {
         private const val GENERATED_SUFFIX = "OrNull"
-        private val THROWS_ANNOTATION_PREDICATE = has("org.itmo.my.pretty.plugin.Throws".fqn())
     }
 
     object ThrowsFunctionKey : FirPluginKey()
 
-    private val predicateBaseProvider = session.predicateBasedProvider
+    override val declPredicate: DeclarationPredicate = has("org.itmo.my.pretty.plugin.Throws".fqn())
 
-    private val matchedFunction: List<FirNamedFunctionSymbol> by lazy {
-        predicateBaseProvider.getSymbolsByPredicate(THROWS_ANNOTATION_PREDICATE)
-            .filterIsInstance<FirNamedFunctionSymbol>()
-    }
-
-    private val generatedCallableIds: Map<CallableId, FirNamedFunctionSymbol> by lazy {
-        matchedFunction.associateBy { symbol ->
-            val genName = Name.identifier(symbol.callableId.callableName.asString() + GENERATED_SUFFIX)
-            symbol.callableId.copy(callableName = genName)
-        }
-    }
+    override fun generateNewFunctionName(oldName: String) =
+        oldName + GENERATED_SUFFIX
 
     @OptIn(SymbolInternals::class)
-    override fun generateFunctions(callableId: CallableId, owner: FirClassSymbol<*>?): List<FirNamedFunctionSymbol> {
-        if (callableId !in generatedCallableIds) {
-            return emptyList()
-        }
-
-        val baseFunSymbol = generatedCallableIds[callableId]!!
-        val returnFunTarget = FirFunctionTarget(callableId.callableName.asString(), false)
-
-
+    override fun generateBody(returnFunTarget: FirFunctionTarget, baseFunSymbol: FirNamedFunctionSymbol): FirBlock {
         // { return baseFun(...args...) }
-        val returnOriginalBlock = buildBlock {
+        val returnOriginalBlock = buildSimpleBlock(session) {
             statements.add(
                 buildReturnExpression {
                     target = returnFunTarget
@@ -93,11 +69,6 @@ class ThrowsFunctionExtension(session: FirSession): FirDeclarationGenerationExte
                 }
             )
         }
-        returnOriginalBlock.replaceTypeRef(
-            buildResolvedTypeRef {
-                type = session.builtinTypes.nothingType.type
-            }
-        )
 
         // try { returnOriginalBlock } catch { return null }
         val tryCatch = buildTryExpression {
@@ -120,7 +91,7 @@ class ThrowsFunctionExtension(session: FirSession): FirDeclarationGenerationExte
                         isVararg = false
                     }
 
-                    val catchBlock = buildBlock {
+                    val catchBlock = buildSimpleBlock(session) {
                         statements.add(
                             buildReturnExpression {
                                 target = returnFunTarget
@@ -128,54 +99,19 @@ class ThrowsFunctionExtension(session: FirSession): FirDeclarationGenerationExte
                             }
                         )
                     }
-                    catchBlock.replaceTypeRef(
-                        buildResolvedTypeRef {
-                            type = session.builtinTypes.nothingType.type
-                        }
-                    )
                     block = catchBlock
                 }
             )
         }
 
-        val genFun = buildSimpleFunction {
-            baseFunSymbol.fir.valueParameters.forEach { original ->
-                valueParameters.add(
-                    buildValueParameterCopy(original) {}
-                )
-            }
-
-            resolvePhase = FirResolvePhase.BODY_RESOLVE
-            moduleData = session.moduleData
-            origin = ThrowsFunctionKey.origin
-            status = baseFunSymbol.resolvedStatus
-            returnTypeRef = buildResolvedTypeRef {
-                type = baseFunSymbol.resolvedReturnType.withNullability(ConeNullability.NULLABLE, session.typeContext)
-            }
-            name = callableId.callableName
-            symbol = FirNamedFunctionSymbol(callableId)
-
-            val bodyBlock = buildBlock {
-                statements.add(tryCatch)
-            }
-            bodyBlock.replaceTypeRef(
-                buildResolvedTypeRef {
-                    type = session.builtinTypes.nothingType.type
-                }
-            )
-            body = bodyBlock
+        return buildSimpleBlock(session) {
+            statements.add(tryCatch)
         }
-
-        returnFunTarget.bind(genFun)
-
-        return listOf(genFun.symbol)
     }
 
-    override fun getTopLevelCallableIds(): Set<CallableId> {
-        return generatedCallableIds.keys
-    }
-
-    override fun FirDeclarationPredicateRegistrar.registerPredicates() {
-        register(THROWS_ANNOTATION_PREDICATE)
+    override fun makeReturnType(baseFunSymbol: FirNamedFunctionSymbol): FirResolvedTypeRef {
+        return buildResolvedTypeRef {
+            type = baseFunSymbol.resolvedReturnType.withNullability(ConeNullability.NULLABLE, session.typeContext)
+        }
     }
 }

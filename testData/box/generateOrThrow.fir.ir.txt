@@ -1,0 +1,11 @@
+FILE fqName:<root> fileName:/generateOrThrow.kt
+  FUN name:g visibility:public modality:FINAL <> () returnType:kotlin.String?
+    annotations:
+      GenerateOrThrow
+    BLOCK_BODY
+      RETURN type=kotlin.Nothing from='public final fun g (): kotlin.String? declared in <root>'
+        CONST String type=kotlin.String value="OK"
+  FUN name:box visibility:public modality:FINAL <> () returnType:kotlin.String
+    BLOCK_BODY
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in <root>'
+        CALL 'public final fun gOrThrow (): kotlin.String declared in <root>' type=kotlin.String origin=null

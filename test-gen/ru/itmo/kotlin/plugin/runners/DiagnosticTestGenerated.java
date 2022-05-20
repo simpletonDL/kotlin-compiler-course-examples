@@ -22,8 +22,14 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
     }
 
     @Test
-    @TestMetadata("simple.kt")
-    public void testSimple() throws Exception {
-        runTest("testData/diagnostics/simple.kt");
+    @TestMetadata("generateOrNull.kt")
+    public void testGenerateOrNull() throws Exception {
+        runTest("testData/diagnostics/generateOrNull.kt");
+    }
+
+    @Test
+    @TestMetadata("generateOrThrow.kt")
+    public void testGenerateOrThrow() throws Exception {
+        runTest("testData/diagnostics/generateOrThrow.kt");
     }
 }

@@ -1,0 +1,17 @@
+FILE: generateOrNull.kt
+    public final fun g(y: R|kotlin/Int|): R|kotlin/String| {
+        throw R|java/lang/Exception.Exception|()
+    }
+    @R|org/itmo/my/pretty/plugin/GenerateOrNull|() public final fun id(x: R|kotlin/Int|): R|kotlin/String| {
+        ^id R|/g|(R|<local>/x|)
+    }
+FILE: __GENERATED DECLARATIONS__.kt
+    public final fun idOrNull(x: R|kotlin/Int|): R|kotlin/String?| {
+        try {
+            ^idOrNull R|/id|(R|<local>/x|)
+        }
+        catch (e: R|kotlin/Throwable|) {
+            ^idOrNull Null(null)
+        }
+
+    }

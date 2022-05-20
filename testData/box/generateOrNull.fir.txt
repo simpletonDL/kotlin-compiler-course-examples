@@ -1,0 +1,17 @@
+FILE: generateOrNull.kt
+    @R|org/itmo/my/pretty/plugin/GenerateOrNull|() public final fun f(): R|kotlin/String| {
+        throw R|java/lang/Exception.Exception|()
+    }
+    public final fun box(): R|kotlin/String| {
+        ^box R|/fOrNull|() ?: String(OK)
+    }
+FILE: __GENERATED DECLARATIONS__.kt
+    public final fun fOrNull(): R|kotlin/String?| {
+        try {
+            ^fOrNull R|/f|()
+        }
+        catch (e: R|kotlin/Throwable|) {
+            ^fOrNull Null(null)
+        }
+
+    }
